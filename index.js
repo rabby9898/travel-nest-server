@@ -31,6 +31,7 @@ const verifyToken = async (req, res, next) => {
       return res.status(401).send({ message: "unauthorized access" });
     }
     req.user = decoded;
+    console.log(decoded);
     next();
   });
 };
@@ -89,6 +90,13 @@ async function run() {
       const result = await roomsCollection.findOne(query);
       res.send(result);
     });
+    // get table rooms by email
+    app.get("/rooms/:email", async (req, res) => {
+      const email = req.params.email;
+      const filter = { "host.email": email };
+      const result = await roomsCollection.find(filter).toArray();
+      res.send(result);
+    });
 
     // Save or modify user email, status in DB
     app.put("/users/:email", async (req, res) => {
@@ -106,6 +114,13 @@ async function run() {
         },
         options
       );
+      res.send(result);
+    });
+
+    // Add Room in the database
+    app.post("/add-room", verifyToken, async (req, res) => {
+      const rooms = req.body;
+      const result = await roomsCollection.insertOne(rooms);
       res.send(result);
     });
 
