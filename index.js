@@ -78,6 +78,13 @@ async function run() {
         res.status(500).send(err);
       }
     });
+    // get user role api
+    app.get("/user/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const result = await usersCollection.findOne(query);
+      res.send(result);
+    });
     // get rooms from database
     app.get("/rooms", async (req, res) => {
       const result = await roomsCollection.find().toArray();
