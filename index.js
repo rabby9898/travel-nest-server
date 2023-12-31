@@ -6,6 +6,7 @@ const cookieParser = require("cookie-parser");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const jwt = require("jsonwebtoken");
 const morgan = require("morgan");
+const stripe = require("stripe")(process.env.PAYMENT_GATEWAY_SK);
 const port = process.env.PORT || 3000;
 
 // middleware
@@ -47,6 +48,7 @@ async function run() {
   try {
     const usersCollection = client.db("travelNest").collection("users");
     const roomsCollection = client.db("travelNest").collection("rooms");
+    const bookingCollection = client.db("travelNest").collection("booking");
     // auth related api
     app.post("/jwt", async (req, res) => {
       const user = req.body;
@@ -130,7 +132,36 @@ async function run() {
       const result = await roomsCollection.insertOne(rooms);
       res.send(result);
     });
+    // payment Post method
+    app.post("/create-payment-intent", verifyToken, async (req, res) => {
+      const price = req.body;
+      const amount = parseInt(price * 100);
+      if (!price || amount < 1) return;
+      const { client_secret } = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+      res.send({ clientSecret: client_secret });
+    });
 
+    app.post("/booking", verifyToken, async (req, res) => {
+      const booking = req.body;
+      const result = await bookingCollection.insertOne(booking);
+      res.send(result);
+    });
+    app.patch("/booking/status/:id", verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const status = req.body.status;
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          booked: status,
+        },
+      };
+      const result = await roomsCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
