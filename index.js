@@ -123,6 +123,11 @@ async function run() {
       const result = await bookingCollection.find(query).toArray();
       res.send(result);
     });
+    // get all users api
+    app.get("/users", verifyToken, async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
 
     // Save or modify user email, status in DB
     app.put("/users/:email", async (req, res) => {
