@@ -134,7 +134,7 @@ async function run() {
     });
     // payment Post method
     app.post("/create-payment-intent", verifyToken, async (req, res) => {
-      const price = req.body;
+      const { price } = req.body;
       const amount = parseInt(price * 100);
       if (!price || amount < 1) return;
       const { client_secret } = await stripe.paymentIntents.create({
@@ -145,12 +145,12 @@ async function run() {
       res.send({ clientSecret: client_secret });
     });
 
-    app.post("/booking", verifyToken, async (req, res) => {
+    app.post("/bookings", verifyToken, async (req, res) => {
       const booking = req.body;
       const result = await bookingCollection.insertOne(booking);
       res.send(result);
     });
-    app.patch("/booking/status/:id", verifyToken, async (req, res) => {
+    app.patch("/rooms/status/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const status = req.body.status;
       const query = { _id: new ObjectId(id) };
