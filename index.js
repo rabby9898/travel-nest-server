@@ -129,6 +129,22 @@ async function run() {
       res.send(result);
     });
 
+    // update role api
+    app.put(`/users/update/:email`, async (req, res) => {
+      const email = req.params.email;
+      const user = req.body;
+      const query = { email: email };
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: {
+          ...user,
+          timestamp: Date.now(),
+        },
+      };
+      const result = await usersCollection.updateOne(query, updateDoc, options);
+      res.send(result);
+    });
+
     // Save or modify user email, status in DB
     app.put("/users/:email", async (req, res) => {
       const email = req.params.email;
