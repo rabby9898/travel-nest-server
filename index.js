@@ -36,6 +36,28 @@ const verifyToken = async (req, res, next) => {
     next();
   });
 };
+
+// verify admin middleware
+const verifyAdmin = async (req, res) => {
+  const user = req.user;
+  const query = { email: user?.email };
+  const result = await usersCollection.findOne(query);
+  if (!result || result?.role !== "admin") {
+    return res.status(401).send({ message: "Unauthorized Access" });
+  }
+  next();
+};
+// verify host middleware
+const verifyHost = async (req, res) => {
+  const user = req.user;
+  const query = { email: user?.email };
+  const result = await usersCollection.findOne(query);
+  if (!result || result?.role !== "host") {
+    return res.status(401).send({ message: "Unauthorized Access" });
+  }
+  next();
+};
+
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.qczjssr.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, {
   serverApi: {
@@ -81,26 +103,26 @@ async function run() {
       }
     });
     // get user role api
-    app.get("/user/:email", async (req, res) => {
+    app.get("/user/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const query = { email: email };
       const result = await usersCollection.findOne(query);
       res.send(result);
     });
     // get rooms from database
-    app.get("/rooms", async (req, res) => {
+    app.get("/rooms", verifyToken, async (req, res) => {
       const result = await roomsCollection.find().toArray();
       res.send(result);
     });
     // get Single Room from database
-    app.get("/room/:id", async (req, res) => {
+    app.get("/room/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await roomsCollection.findOne(query);
       res.send(result);
     });
     // get table rooms by email
-    app.get("/rooms/:email", async (req, res) => {
+    app.get("/rooms/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const filter = { "host.email": email };
       const result = await roomsCollection.find(filter).toArray();
@@ -124,29 +146,38 @@ async function run() {
       res.send(result);
     });
     // get all users api
-    app.get("/users", verifyToken, async (req, res) => {
+    app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
 
     // update role api
-    app.put(`/users/update/:email`, async (req, res) => {
-      const email = req.params.email;
-      const user = req.body;
-      const query = { email: email };
-      const options = { upsert: true };
-      const updateDoc = {
-        $set: {
-          ...user,
-          timestamp: Date.now(),
-        },
-      };
-      const result = await usersCollection.updateOne(query, updateDoc, options);
-      res.send(result);
-    });
+    app.put(
+      `/users/update/:email`,
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const email = req.params.email;
+        const user = req.body;
+        const query = { email: email };
+        const options = { upsert: true };
+        const updateDoc = {
+          $set: {
+            ...user,
+            timestamp: Date.now(),
+          },
+        };
+        const result = await usersCollection.updateOne(
+          query,
+          updateDoc,
+          options
+        );
+        res.send(result);
+      }
+    );
 
     // Save or modify user email, status in DB
-    app.put("/users/:email", async (req, res) => {
+    app.put("/users/:email", verifyToken, verifyAdmin, async (req, res) => {
       const email = req.params.email;
       const user = req.body;
       const query = { email: email };
@@ -176,7 +207,7 @@ async function run() {
     });
 
     // Add Room in the database
-    app.post("/add-room", verifyToken, async (req, res) => {
+    app.post("/add-room", verifyToken, verifyHost, async (req, res) => {
       const rooms = req.body;
       const result = await roomsCollection.insertOne(rooms);
       res.send(result);
